@@ -55,6 +55,12 @@
       },
       "type": "array"
     },
+    "filter_chains": {
+      "items": {
+        "$ref": "#/definitions/FFilterChain"
+      },
+      "type": "array"
+    },
     "licenses": {
       "items": {
         "$schema": "http://json-schema.org/draft-04/schema#",
@@ -444,7 +450,6 @@
         },
         "groups": {
           "items": {
-            "$schema": "http://json-schema.org/draft-04/schema#",
             "$ref": "#/definitions/ConsumerGroup"
           },
           "type": "array"
@@ -567,6 +572,70 @@
       "additionalProperties": false,
       "type": "object"
     },
+    "FFilterChain": {
+      "properties": {
+        "created_at": {
+          "type": "integer"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "filters": {
+          "items": {
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "config": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "route": {
+          "type": "string"
+        },
+        "service": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "anyOf": [
+        {
+          "required": [
+            "filters",
+            "name"
+          ]
+        },
+        {
+          "required": [
+            "filters",
+            "id"
+          ]
+        }
+      ]
+    },
     "FLicense": {
       "properties": {
         "created_at": {
@@ -599,6 +668,10 @@
         },
         "consumer": {
           "type": "string"
+        },
+        "consumer_group": {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "$ref": "#/definitions/ConsumerGroup"
         },
         "created_at": {
           "type": "integer"
@@ -723,6 +796,13 @@
         },
         "expression": {
           "type": "string"
+        },
+        "filter_chains": {
+          "items": {
+            "$schema": "http://json-schema.org/draft-04/schema#",
+            "$ref": "#/definitions/FFilterChain"
+          },
+          "type": "array"
         },
         "headers": {
           "patternProperties": {
@@ -855,6 +935,12 @@
         },
         "enabled": {
           "type": "boolean"
+        },
+        "filter_chains": {
+          "items": {
+            "$ref": "#/definitions/FFilterChain"
+          },
+          "type": "array"
         },
         "host": {
           "type": "string"
@@ -1119,6 +1205,21 @@
         },
         "updated_at": {
           "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "Filter": {
+      "properties": {
+        "config": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

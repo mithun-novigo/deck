@@ -30,6 +30,19 @@ func (crud *servicePostAction) Delete(_ context.Context, args ...crud.Arg) (crud
 			return nil, fmt.Errorf("error deleting plugin '%v' for service '%v': %w", *plugin.ID, serviceID, err)
 		}
 	}
+
+	// Delete all filterChains associated with this service as that's the implicit behavior of Kong (cascade delete).
+	filterChains, err := crud.currentState.FilterChains.GetAllByServiceID(serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up filterChains for service '%v': %w", serviceID, err)
+	}
+	for _, filterChain := range filterChains {
+		err = crud.currentState.FilterChains.Delete(*filterChain.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error deleting filterChain '%v' for service '%v': %w", *filterChain.ID, serviceID, err)
+		}
+	}
+
 	return nil, crud.currentState.Services.Delete(serviceID)
 }
 
@@ -59,6 +72,19 @@ func (crud *routePostAction) Delete(_ context.Context, args ...crud.Arg) (crud.A
 			return nil, fmt.Errorf("error deleting plugin '%v' for route '%v': %w", *plugin.ID, routeID, err)
 		}
 	}
+
+	// Delete all filterChains associated with this route as that's the implicit behavior of Kong (cascade delete).
+	filterChains, err := crud.currentState.FilterChains.GetAllByRouteID(routeID)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up filterChains for route '%v': %w", routeID, err)
+	}
+	for _, filterChain := range filterChains {
+		err = crud.currentState.FilterChains.Delete(*filterChain.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error deleting filterChain '%v' for route '%v': %w", *filterChain.ID, routeID, err)
+		}
+	}
+
 	return nil, crud.currentState.Routes.Delete(routeID)
 }
 
@@ -162,6 +188,22 @@ func (crud *pluginPostAction) Delete(_ context.Context, args ...crud.Arg) (crud.
 
 func (crud *pluginPostAction) Update(_ context.Context, args ...crud.Arg) (crud.Arg, error) {
 	return nil, crud.currentState.Plugins.Update(*args[0].(*state.Plugin))
+}
+
+type filterChainPostAction struct {
+	currentState *state.KongState
+}
+
+func (crud *filterChainPostAction) Create(_ context.Context, args ...crud.Arg) (crud.Arg, error) {
+	return nil, crud.currentState.FilterChains.Add(*args[0].(*state.FilterChain))
+}
+
+func (crud *filterChainPostAction) Delete(_ context.Context, args ...crud.Arg) (crud.Arg, error) {
+	return nil, crud.currentState.FilterChains.Delete(*((args[0].(*state.FilterChain)).ID))
+}
+
+func (crud *filterChainPostAction) Update(_ context.Context, args ...crud.Arg) (crud.Arg, error) {
+	return nil, crud.currentState.FilterChains.Update(*args[0].(*state.FilterChain))
 }
 
 type consumerPostAction struct {

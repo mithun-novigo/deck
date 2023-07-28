@@ -80,6 +80,7 @@ func (b *stateBuilder) build() (*utils.KongRawState, *utils.KonnectRawState, err
 	b.consumerGroups()
 	b.consumers()
 	b.plugins()
+	b.filterChains()
 	b.enterprise()
 
 	// konnect
@@ -679,6 +680,16 @@ func (b *stateBuilder) ingestService(s *FService) error {
 		return err
 	}
 
+	// filter chains for the service
+	var filterChains []FFilterChain
+	for _, f := range s.FilterChains {
+		f.Service = utils.GetServiceReference(s.Service)
+		filterChains = append(filterChains, *f)
+	}
+	if err := b.ingestFilterChains(filterChains); err != nil {
+		return err
+	}
+
 	// routes for the service
 	for _, r := range s.Routes {
 		r := r
@@ -890,6 +901,48 @@ func (b *stateBuilder) plugins() {
 	}
 }
 
+func (b *stateBuilder) filterChains() {
+	if b.err != nil {
+		return
+	}
+
+	var filterChains []FFilterChain
+	for _, p := range b.targetContent.FilterChains {
+		p := p
+		if p.Service != nil && !utils.Empty(p.Service.ID) {
+			s, err := b.intermediate.Services.Get(*p.Service.ID)
+			if errors.Is(err, state.ErrNotFound) {
+				b.err = fmt.Errorf("service %v for filterChain %v: %w",
+					p.Service.FriendlyName(), *p.Name, err)
+
+				return
+			} else if err != nil {
+				b.err = err
+				return
+			}
+			p.Service = utils.GetServiceReference(s.Service)
+		}
+		if p.Route != nil && !utils.Empty(p.Route.ID) {
+			r, err := b.intermediate.Routes.Get(*p.Route.ID)
+			if errors.Is(err, state.ErrNotFound) {
+				b.err = fmt.Errorf("route %v for filterChain %v: %w",
+					p.Route.FriendlyName(), *p.Name, err)
+
+				return
+			} else if err != nil {
+				b.err = err
+				return
+			}
+			p.Route = utils.GetRouteReference(r.Route)
+		}
+		filterChains = append(filterChains, p)
+	}
+	if err := b.ingestFilterChains(filterChains); err != nil {
+		b.err = err
+		return
+	}
+}
+
 // strip_path schema default value is 'true', but it cannot be set when
 // protocols include 'grpc' and/or 'grpcs'. When users explicitly set
 // strip_path to 'true' with grpc/s protocols, deck returns a schema violation error.
@@ -932,6 +985,16 @@ func (b *stateBuilder) ingestRoute(r FRoute) error {
 	b.rawState.Routes = append(b.rawState.Routes, &r.Route)
 	err = b.intermediate.Routes.Add(state.Route{Route: r.Route})
 	if err != nil {
+		return err
+	}
+
+	// filter chains for the route
+	var filterChains []FFilterChain
+	for _, f := range r.FilterChains {
+		f.Route = utils.GetRouteReference(r.Route)
+		filterChains = append(filterChains, *f)
+	}
+	if err := b.ingestFilterChains(filterChains); err != nil {
 		return err
 	}
 
@@ -1023,6 +1086,37 @@ func (b *stateBuilder) ingestPlugins(plugins []FPlugin) error {
 		b.rawState.Plugins = append(b.rawState.Plugins, &p.Plugin)
 	}
 	return nil
+}
+
+func (b *stateBuilder) ingestFilterChains(filterChains []FFilterChain) error {
+	for _, f := range filterChains {
+		f := f
+		if utils.Empty(f.ID) {
+			rID, sID := filterChainRelations(&f.FilterChain)
+			filterChain, err := b.currentState.FilterChains.GetByProp(*f.Name,
+				sID, rID)
+			if errors.Is(err, state.ErrNotFound) {
+				f.ID = uuid()
+			} else if err != nil {
+				return err
+			} else {
+				f.ID = kong.String(*filterChain.ID)
+			}
+		}
+		utils.MustMergeTags(&f, b.selectTags)
+		b.rawState.FilterChains = append(b.rawState.FilterChains, &f.FilterChain)
+	}
+	return nil
+}
+
+func filterChainRelations(filterChain *kong.FilterChain) (rID, sID string) {
+	if filterChain.Route != nil && !utils.Empty(filterChain.Route.ID) {
+		rID = *filterChain.Route.ID
+	}
+	if filterChain.Service != nil && !utils.Empty(filterChain.Service.ID) {
+		sID = *filterChain.Service.ID
+	}
+	return
 }
 
 func (b *stateBuilder) fillPluginConfig(plugin *FPlugin) error {

@@ -220,5 +220,8 @@ func ensureGetAllMethods() error {
 	if _, err := utils.CallGetAll(dummyEmptyState.RBACRoles); err != nil {
 		return err
 	}
+	if _, err := utils.CallGetAll(dummyEmptyState.FilterChains); err != nil {
+		return err
+	}
 	return nil
 }

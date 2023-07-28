@@ -160,7 +160,7 @@ func (sc *Syncer) init() error {
 	}
 
 	entities := []types.EntityType{
-		types.Service, types.Route, types.Plugin,
+		types.Service, types.Route, types.Plugin, types.FilterChain,
 
 		types.Certificate, types.SNI, types.CACertificate,
 

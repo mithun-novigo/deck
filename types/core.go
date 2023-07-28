@@ -69,6 +69,8 @@ const (
 	Route EntityType = "route"
 	// Plugin identifies a Plugin in Kong.
 	Plugin EntityType = "plugin"
+	// FilterChain identifies a FilterChain in Kong.
+	FilterChain EntityType = "filter-chain"
 
 	// Certificate identifies a Certificate in Kong.
 	Certificate EntityType = "certificate"
@@ -124,7 +126,7 @@ const (
 // AllTypes represents all types defined in the
 // package.
 var AllTypes = []EntityType{
-	Service, Route, Plugin,
+	Service, Route, Plugin, FilterChain,
 
 	Certificate, SNI, CACertificate,
 
@@ -220,6 +222,21 @@ func NewEntity(t EntityType, opts EntityOpts) (Entity, error) {
 			},
 			differ: &pluginDiffer{
 				kind:         entityTypeToKind(Plugin),
+				currentState: opts.CurrentState,
+				targetState:  opts.TargetState,
+			},
+		}, nil
+	case FilterChain:
+		return entityImpl{
+			typ: FilterChain,
+			crudActions: &filterChainCRUD{
+				client: opts.KongClient,
+			},
+			postProcessActions: &filterChainPostAction{
+				currentState: opts.CurrentState,
+			},
+			differ: &filterChainDiffer{
+				kind:         entityTypeToKind(FilterChain),
 				currentState: opts.CurrentState,
 				targetState:  opts.TargetState,
 			},
